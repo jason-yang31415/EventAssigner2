@@ -27,8 +27,18 @@ import scioly.Tournament.TournamentEvent;
 public class Main {
 
 	public static void main(String[] args) throws ScheduleException, URISyntaxException, IOException {
+		System.out.println(" (           (        )   (        )                        )                    (    (    (                )       (     \r\n" +
+				" )\\ )   (    )\\ )  ( /(   )\\ )  ( /(                     ( /(   *   )     (      )\\ ) )\\ ) )\\ )  (       ( /(       )\\ )  \r\n" +
+				"(()/(   )\\  (()/(  )\\()) (()/(  )\\())  (    (   (   (    )\\())` )  /(     )\\    (()/((()/((()/(  )\\ )    )\\()) (   (()/(  \r\n" +
+				" /(_))(((_)  /(_))((_)\\   /(_))((_)\\   )\\   )\\  )\\  )\\  ((_)\\  ( )(_)) ((((_)(   /(_))/(_))/(_))(()/(   ((_)\\  )\\   /(_)) \r\n" +
+				"(_))  )\\___ (_))    ((_) (_)) __ ((_) ((_) ((_)((_)((_)  _((_)(_(_())   )\\ _ )\\ (_)) (_)) (_))   /(_))_  _((_)((_) (_))   \r\n" +
+				"/ __|((/ __||_ _|  / _ \\ | |  \\ \\ / / | __|\\ \\ / / | __|| \\| ||_   _|   (_)_\\(_)/ __|/ __||_ _| (_)) __|| \\| || __|| _ \\  \r\n" +
+				"\\__ \\ | (__  | |  | (_) || |__ \\ V /  | _|  \\ V /  | _| | .` |  | |      / _ \\  \\__ \\\\__ \\ | |    | (_ || .` || _| |   /  \r\n" +
+				"|___/  \\___||___|  \\___/ |____| |_|   |___|  \\_/   |___||_|\\_|  |_|     /_/ \\_\\ |___/|___/|___|    \\___||_|\\_||___||_|_\\  \r\n" +
+				"                                                                                                                          ");
+
 		Scanner scanner = new Scanner(System.in);
-		String path = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getPath();
+		String path = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
 		TeamRosterConfiguration configuration = parseConfig(new FileInputStream(path + "/config.txt"));
 
 		System.out.println("\noptimize? (Y/n)");
@@ -59,6 +69,7 @@ public class Main {
 		Team team = new Team();
 		ArrayList<Integer> timeslots = new ArrayList<Integer>();
 		Tournament tournament = null;
+		ArrayList<TournamentEvent> building = new ArrayList<TournamentEvent>();
 		ArrayList<TeamMember[]> stacks = new ArrayList<TeamMember[]>();
 		ArrayList<TeamMember[]> unstacks = new ArrayList<TeamMember[]>();
 
@@ -119,7 +130,7 @@ public class Main {
 					} catch (ScheduleException e) {
 						e.printStackTrace();
 					}
-					System.out.println("Event " + event + " is block " + timeslot + ", with target " + Integer.parseInt(line.split(" : ")[2]) + " people");
+					// System.out.println("Event " + event + " is block " + timeslot + ", with target " + Integer.parseInt(line.split(" : ")[2]) + " people");
 				}
 				else {
 					try {
@@ -127,7 +138,7 @@ public class Main {
 					} catch (ScheduleException e) {
 						e.printStackTrace();
 					}
-					System.out.println("Event " + event + " is block " + timeslot + ", with target 2 people");
+					// System.out.println("Event " + event + " is block " + timeslot + ", with target 2 people");
 				}
 			}
 			else if (stage.equals("team")) {
@@ -142,19 +153,20 @@ public class Main {
 				for (String event : events)
 					eventList.add(tournament.getEvent(event));
 				team.addTeamMember(name, eventList);
-				System.out.println(name + " is doing events: " + String.join(", ", events));
+				// System.out.println(name + " is doing events: " + String.join(", ", events));
 			} else if (stage.equals("building")){
 				tournament.getEvent(line).setBuilding(true);
-				System.out.println(line + " is a building event");
+				building.add(tournament.getEvent(line));
+				// System.out.println(line + " is a building event");
 			} else if (stage.equals("stack")) {
 				if (line.contains(" + ")){
 					String[] names = line.split(" \\+ ");
 					stacks.add(new TeamMember[] {team.getTeamMember(names[0]), team.getTeamMember(names[1])});
-					System.out.println(line.split(" \\+ ")[0] + " and " + line.split(" \\+ ")[1] + " will be on the same team");
+					// System.out.println(line.split(" \\+ ")[0] + " and " + line.split(" \\+ ")[1] + " will be on the same team");
 				} else if (line.contains(" - ")){
 					String[] names = line.split(" - ");
 					unstacks.add(new TeamMember[] {team.getTeamMember(names[0]), team.getTeamMember(names[1])});
-					System.out.println(line.split(" - ")[0] + " and " + line.split(" - ")[1] + " will be on different teams");
+					// System.out.println(line.split(" - ")[0] + " and " + line.split(" - ")[1] + " will be on different teams");
 				} else {
 					System.err.println("Expected ' + ' (stack) or ' - ' (unstack)\nencountered '" + line + "'\nexiting...");
 					System.exit(0);
@@ -172,6 +184,13 @@ public class Main {
 			configuration.addStack(members[0], members[1]);
 		for (TeamMember[] members : unstacks)
 			configuration.addUnstack(members[0], members[1]);
+
+		System.out.println(String.format("parsed config file: \n\t%d blocks\n\t%d events (%d building)\n\t%d team members\n\t%d stacking rules\n\t%d unstacking rules",
+				timeslots.size(),
+				configuration.getTournament().getEvents().size(), building.size(),
+				configuration.getTeam().getTeamMembers().size(),
+				stacks.size(), unstacks.size()));
+
 		return configuration;
 	}
 
