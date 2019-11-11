@@ -113,13 +113,24 @@ public class Main {
 				if (line.split(" : ")[0].equals("teams")) {
 					String[] ss = line.split(" : ")[1].split(", ");
 					targets = new int[ss.length];
-					for (int i = 0; i < ss.length; i++)
-						targets[i] = Integer.parseInt(ss[i]);
+					for (int i = 0; i < ss.length; i++) {
+						try {
+							targets[i] = Integer.parseInt(ss[i]);
+						} catch (NumberFormatException e) {
+							System.err.println("'" + ss[i] + "' is not a number (line " + lineNum + ")");
+							System.exit(1);
+						}
+					}
 				}
 			}
 			else if (stage.equals("timeslots")) {
 				for (String s : line.split(" : ")) {
-					timeslots.add(Integer.parseInt(s));
+					try {
+						timeslots.add(Integer.parseInt(s));
+					} catch (NumberFormatException e) {
+						System.err.println("'" + s + "' is not a number (line " + lineNum + ")");
+						System.exit(1);
+					}
 				}
 			}
 			else if (stage.equals("schedule")) {
@@ -130,7 +141,17 @@ public class Main {
 				}
 
 				String event = line.split(" : ")[0];
-				int timeslot = Integer.parseInt(line.split(" : ")[1]);
+				if (line.split(" : ").length < 2) {
+					System.err.println("expected ' : ' (line " + lineNum + ")");
+					System.exit(1);
+				}
+				int timeslot = 0;
+				try {
+					timeslot = Integer.parseInt(line.split(" : ")[1]);
+				} catch (NumberFormatException e) {
+					System.err.println("'" + line.split(" : ")[1] + "' is not a number (line " + lineNum + ")");
+					System.exit(1);
+				}
 				if (line.split(" : ").length > 2){
 					try {
 						tournament.addEvent(event, timeslot, Integer.parseInt(line.split(" : ")[2]));
@@ -155,12 +176,25 @@ public class Main {
 				}
 
 				String name = line.split(" : ")[0];
+				if (line.split(" : ").length < 2) {
+					System.err.println("expected ' : ' (line " + lineNum + ")");
+					System.exit(1);
+				}
 				String[] events = line.split(" : ")[1].split(", ");
 				ArrayList<TournamentEvent> eventList = new ArrayList<TournamentEvent>();
-				for (String event : events)
+				for (String event : events) {
+					if (tournament.getEvent(event) == null) {
+						System.err.println("event " + event + " does not exist (line " + lineNum + ")");
+						System.exit(1);
+					}
 					eventList.add(tournament.getEvent(event));
+				}
 				team.addTeamMember(name, eventList);
 			} else if (stage.equals("building")){
+				if (tournament.getEvent(line) == null) {
+					System.err.println("event " + line + " does not exist (line " + lineNum + ")");
+					System.exit(1);
+				}
 				tournament.getEvent(line).setBuilding(true);
 				building.add(tournament.getEvent(line));
 			} else if (stage.equals("stack")) {
@@ -168,7 +202,7 @@ public class Main {
 					String[] names = line.split(" \\+ ");
 					for (String n : names) {
 						if (team.getTeamMember(n) == null) {
-							System.err.println("team member " + n + " does not exist");
+							System.err.println("team member " + n + " does not exist (line " + lineNum + ")");
 							System.exit(1);
 						}
 					}
@@ -183,7 +217,7 @@ public class Main {
 					}
 					unstacks.add(new TeamMember[] {team.getTeamMember(names[0]), team.getTeamMember(names[1])});
 				} else {
-					System.err.println("Expected ' + ' (stack) or ' - ' (unstack)\nencountered '" + line + "'\nexiting...");
+					System.err.println("Expected ' + ' (stack) or ' - ' (unstack)\nencountered '" + line + "' (line " + lineNum + ")\nexiting...");
 					System.exit(0);
 				}
 			}
