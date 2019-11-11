@@ -2,9 +2,6 @@
 *.class
 bin/
 
-# config files
-config.txt
-
 # Log file
 *.log
 

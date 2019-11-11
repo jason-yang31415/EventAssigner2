@@ -1,0 +1,76 @@
+# CONFIG FILE
+# comment lines start with '#'
+# the config file consists of several section; each section starts with the section name and ends with 'END SECTION'
+# the contents of the file are case-sensitive
+
+# CONFIG
+# specify optimizer parameters with:
+# parameter : value(s)
+# note that the spaces around the colon are required
+config
+teams : 2, 2
+END SECTION
+
+# TIMESLOTS
+# specify each block with an integer; use -1 for signup events
+# separate values with ' : ' (the spacing is required)
+# events in block -1 do not conflict
+
+timeslots
+-1 : 1 : 2 : 3 : 4 : 5 : 6
+END SECTION
+
+# SCHEDULE
+# specify each event with:
+# event : block
+# event : block : number of people (if it isn't 2)
+# where the block number corresponds to the block in the timeslots section; not that the spacing around the colon is required
+
+schedule
+A : 1
+B : 2
+C : 3
+D : 4
+E : 5
+F : 6
+G : -1
+H : -1 : 3
+END SECTION
+
+# TEAM
+# specify the events for each team member with:
+# name : event, event, event
+# note that the spacing around the colon and after commas is required
+
+team
+a : A
+b : B
+c : C
+d : D
+e : E
+f : F
+g : G, H
+END SECTION
+
+# BUILDING
+# list building events here
+# building event assignments are scored differently than non-building event assignments
+
+building
+G
+END SECTION
+
+# STACKING/UNSTACKING
+# specify which team members should be on the same team and which team members should be on different teams
+# 'a + b' means that a and b will be on the same team
+#     this also means that both a and b will be going
+#     'a + a' ensures that a is going
+# 'a - b' means that a and b will not be on the same team
+#     either a and b will be on opposite teams, one of the two is not going, or neither is going
+# note that the spacing around the '+' and '-' are required
+
+stack
+a + a
+a - b
+c + d
+END SECTION

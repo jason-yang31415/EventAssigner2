@@ -47,18 +47,17 @@ public class ConstraintOptimizer {
 		}
 		OptimizerGroup group2 = round2(queue);
 
+		HashSet<CompleteTeamRoster> rosters = new HashSet<CompleteTeamRoster>();
+		for (Entry e : group2.getOutput()) {
+			rosters.add(CompleteTeamRoster.reconstruct(configuration, (FullTeamRoster) e.getRoster()));
+		}
 
-		System.out.println("\n========\n\nround 2 complete producing " + group2.getOutput().size() + " rosters with score " + group2.getMinBound()
+		System.out.println("\n========\n\nround 2 complete producing " + rosters.size() + " rosters with score " + group2.getMinBound()
 		+ "\n\n========\n");
 		Entry entryB = group2.getOutput().getFirst();
 		CompleteTeamRoster.reconstruct(configuration, (FullTeamRoster) entryB.getRoster()).print();
 		System.out.println("lower bound: " + ((FullTeamRoster) entryB.getRoster()).lowerBound());
 		System.out.println("actual score: " + ((FullTeamRoster) entryB.getRoster()).score());
-
-		HashSet<CompleteTeamRoster> rosters = new HashSet<CompleteTeamRoster>();
-		for (Entry e : group2.getOutput()) {
-			rosters.add(CompleteTeamRoster.reconstruct(configuration, (FullTeamRoster) e.getRoster()));
-		}
 
 		System.out.println();
 		System.out.println(" + " + (rosters.size() - 1) + " more rosters...");

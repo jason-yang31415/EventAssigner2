@@ -67,6 +67,7 @@ public class Main {
 
 	public static TeamRosterConfiguration parseConfig(InputStream is) throws IOException {
 		Team team = new Team();
+		int[] targets = null;
 		ArrayList<Integer> timeslots = new ArrayList<Integer>();
 		Tournament tournament = null;
 		ArrayList<TournamentEvent> building = new ArrayList<TournamentEvent>();
@@ -108,7 +109,15 @@ public class Main {
 				continue;
 			}
 
-			if (stage.equals("timeslots")) {
+			if (stage.equals("config")) {
+				if (line.split(" : ")[0].equals("teams")) {
+					String[] ss = line.split(" : ")[1].split(", ");
+					targets = new int[ss.length];
+					for (int i = 0; i < ss.length; i++)
+						targets[i] = Integer.parseInt(ss[i]);
+				}
+			}
+			else if (stage.equals("timeslots")) {
 				for (String s : line.split(" : ")) {
 					timeslots.add(Integer.parseInt(s));
 				}
@@ -130,7 +139,6 @@ public class Main {
 					} catch (ScheduleException e) {
 						e.printStackTrace();
 					}
-					// System.out.println("Event " + event + " is block " + timeslot + ", with target " + Integer.parseInt(line.split(" : ")[2]) + " people");
 				}
 				else {
 					try {
@@ -138,7 +146,6 @@ public class Main {
 					} catch (ScheduleException e) {
 						e.printStackTrace();
 					}
-					// System.out.println("Event " + event + " is block " + timeslot + ", with target 2 people");
 				}
 			}
 			else if (stage.equals("team")) {
@@ -153,20 +160,28 @@ public class Main {
 				for (String event : events)
 					eventList.add(tournament.getEvent(event));
 				team.addTeamMember(name, eventList);
-				// System.out.println(name + " is doing events: " + String.join(", ", events));
 			} else if (stage.equals("building")){
 				tournament.getEvent(line).setBuilding(true);
 				building.add(tournament.getEvent(line));
-				// System.out.println(line + " is a building event");
 			} else if (stage.equals("stack")) {
 				if (line.contains(" + ")){
 					String[] names = line.split(" \\+ ");
+					for (String n : names) {
+						if (team.getTeamMember(n) == null) {
+							System.err.println("team member " + n + " does not exist");
+							System.exit(1);
+						}
+					}
 					stacks.add(new TeamMember[] {team.getTeamMember(names[0]), team.getTeamMember(names[1])});
-					// System.out.println(line.split(" \\+ ")[0] + " and " + line.split(" \\+ ")[1] + " will be on the same team");
 				} else if (line.contains(" - ")){
 					String[] names = line.split(" - ");
+					for (String n : names) {
+						if (team.getTeamMember(n) == null) {
+							System.err.println("team member " + n + " does not exist");
+							System.exit(1);
+						}
+					}
 					unstacks.add(new TeamMember[] {team.getTeamMember(names[0]), team.getTeamMember(names[1])});
-					// System.out.println(line.split(" - ")[0] + " and " + line.split(" - ")[1] + " will be on different teams");
 				} else {
 					System.err.println("Expected ' + ' (stack) or ' - ' (unstack)\nencountered '" + line + "'\nexiting...");
 					System.exit(0);
@@ -179,7 +194,12 @@ public class Main {
 			System.exit(1);
 		}
 
-		TeamRosterConfiguration configuration = new TeamRosterConfiguration(team, tournament, new int[] {15, 15});
+		if (targets == null) {
+			System.err.println("Missing team sizes in config section");
+			System.exit(1);
+		}
+
+		TeamRosterConfiguration configuration = new TeamRosterConfiguration(team, tournament, targets);
 		for (TeamMember[] members : stacks)
 			configuration.addStack(members[0], members[1]);
 		for (TeamMember[] members : unstacks)
@@ -190,6 +210,10 @@ public class Main {
 				configuration.getTournament().getEvents().size(), building.size(),
 				configuration.getTeam().getTeamMembers().size(),
 				stacks.size(), unstacks.size()));
+		System.out.print("target teams: ");
+		for (int i : targets)
+			System.out.print(i + " ");
+		System.out.println();
 
 		return configuration;
 	}

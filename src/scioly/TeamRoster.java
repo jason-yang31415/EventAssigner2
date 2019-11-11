@@ -211,7 +211,17 @@ public class TeamRoster implements BranchAndBound {
 		for (TeamRosterTeam t : teams)
 			totalAssigned += t.getNumberMembers();
 		int numSkipsLeft = configuration.getTeam().getTeamMembers().size() - assignmentIndex - configuration.getTotalTeamSize() + totalAssigned;
-		if (numSkipsLeft > 0) {
+
+		boolean valid = true;
+		for (TeamMember[] pair : configuration.getStacks()) {
+			if (person == pair[0] || person == pair[1]) {
+				valid = false;
+				break;
+			}
+		}
+
+		if (numSkipsLeft > 0 && valid) {
+			System.out.println(person);
 			TeamRoster tr = this.copy(this);
 			tr.assignMember(-1, person);
 			branches.add(tr);

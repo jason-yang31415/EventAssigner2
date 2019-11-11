@@ -174,6 +174,12 @@ public class CompleteTeamRoster {
 		return teamSet.equals(otherTeamSet);
 	}
 
+	@Override
+	public int hashCode() {
+		HashSet<CompleteTeamRosterTeam> teamSet = new HashSet<CompleteTeamRosterTeam>(Arrays.asList(teams));
+		return teamSet.hashCode();
+	}
+
 	public static class CompleteTeamRosterTeam {
 
 		private HashMap<TournamentEvent, HashSet<TeamMember>> events;
