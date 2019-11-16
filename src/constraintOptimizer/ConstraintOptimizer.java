@@ -27,11 +27,12 @@ import scioly.TeamRosterConfiguration;
  */
 public class ConstraintOptimizer {
 
-	private TeamRosterConfiguration configuration;
-	private int threads = 4;
+	private OptimizerConfiguration optConfig;
+	private TeamRosterConfiguration teamConfig;
 
-	public ConstraintOptimizer(TeamRosterConfiguration configuration) {
-		this.configuration = configuration;
+	public ConstraintOptimizer(OptimizerConfiguration optConfig, TeamRosterConfiguration teamConfig) {
+		this.optConfig = optConfig;
+		this.teamConfig = teamConfig;
 	}
 
 	public HashSet<CompleteTeamRoster> optimize() {
@@ -39,11 +40,11 @@ public class ConstraintOptimizer {
 		ArrayList<BranchAndBound> output1 = group1.getOptimal();
 
 		System.out.println("\n========\n\nround 1 complete producing " + output1.size() + " rosters with score " + group1.getMinBound()
-		+ "\n\n========\n");
+		+ " (+" + group1.getTolerance() + ")\n\n========\n");
 
 		ConcurrentLinkedDeque<Entry> queue = new ConcurrentLinkedDeque<Entry>();
 		for (BranchAndBound e : output1) {
-			FullTeamRoster ros = FullTeamRoster.initFullTeamRoster(configuration, (TeamRoster) e);
+			FullTeamRoster ros = FullTeamRoster.initFullTeamRoster(teamConfig, (TeamRoster) e);
 			queue.push(new Entry(ros, ros.lowerBound()));
 		}
 		OptimizerGroup group2 = round2(queue);
@@ -51,13 +52,13 @@ public class ConstraintOptimizer {
 
 		HashSet<CompleteTeamRoster> rosters = new HashSet<CompleteTeamRoster>();
 		for (BranchAndBound e : output2) {
-			rosters.add(CompleteTeamRoster.reconstruct(configuration, (FullTeamRoster) e));
+			rosters.add(CompleteTeamRoster.reconstruct(teamConfig, (FullTeamRoster) e));
 		}
 
 		System.out.println("\n========\n\nround 2 complete producing " + rosters.size() + " rosters with score " + group2.getMinBound()
-		+ "\n\n========\n");
+		+ " (+" + group2.getTolerance() + ")\n\n========\n");
 		FullTeamRoster first = (FullTeamRoster) output2.get(0);
-		CompleteTeamRoster.reconstruct(configuration, first).print();
+		CompleteTeamRoster.reconstruct(teamConfig, first).print();
 		System.out.println("lower bound: " + first.lowerBound());
 		System.out.println("actual score: " + first.score());
 
@@ -73,11 +74,11 @@ public class ConstraintOptimizer {
 	 */
 	private OptimizerGroup round1() {
 		ConcurrentLinkedDeque<Entry> queue = new ConcurrentLinkedDeque<Entry>();
-		TeamRoster roster = TeamRoster.initTeamRoster(configuration);
+		TeamRoster roster = TeamRoster.initTeamRoster(teamConfig);
 		queue.push(new Entry(roster, roster.lowerBound()));
-		OptimizerGroup group = new OptimizerGroup(queue);
+		OptimizerGroup group = new OptimizerGroup(queue, optConfig.getTolerance1());
 		ArrayList<OptimizerThread> threadList = new ArrayList<OptimizerThread>();
-		for (int i = 0; i < threads; i++) {
+		for (int i = 0; i < optConfig.getThreads(); i++) {
 			threadList.add(new OptimizerThreadA(group, i));
 		}
 		group.run(threadList);
@@ -96,9 +97,9 @@ public class ConstraintOptimizer {
 	 * @return OptimizerGroup containing round 2 results
 	 */
 	private OptimizerGroup round2(Deque<Entry> queue) {
-		OptimizerGroup group = new OptimizerGroup(queue);
+		OptimizerGroup group = new OptimizerGroup(queue, optConfig.getTolerance2());
 		ArrayList<OptimizerThread> threadList = new ArrayList<OptimizerThread>();
-		for (int i = 0; i < threads; i++) {
+		for (int i = 0; i < optConfig.getThreads(); i++) {
 			threadList.add(new OptimizerThreadA(group, i));
 		}
 		group.run(threadList);
@@ -122,17 +123,19 @@ public class ConstraintOptimizer {
 
 		private Deque<Entry> queue;
 		private LinkedBlockingDeque<Entry> output;
+		private int tolerance;
 		private CountDownLatch latch;
 		private boolean[] stopped;
 		private int minBound;
 
-		public OptimizerGroup(Deque<Entry> queue) {
+		public OptimizerGroup(Deque<Entry> queue, int tolerance) {
 			this.queue = queue;
+			this.tolerance = tolerance;
 			output = new LinkedBlockingDeque<Entry>();
 		}
 
 		public void run(ArrayList<OptimizerThread> threads) {
-			minBound = Integer.MAX_VALUE - 1;
+			minBound = Integer.MAX_VALUE - tolerance;
 			stopped = new boolean[threads.size()];
 			latch = new CountDownLatch(threads.size());
 			for (OptimizerThread ot : threads) {
@@ -156,7 +159,7 @@ public class ConstraintOptimizer {
 		public ArrayList<BranchAndBound> getOptimal(){
 			ArrayList<BranchAndBound> optimal = new ArrayList<BranchAndBound>();
 			for (Entry e : getOutput()) {
-				if (e.getBound() == getMinBound())
+				if (e.getBound() <= getMinBound() + tolerance)
 					optimal.add(e.getRoster());
 			}
 			return optimal;
@@ -179,6 +182,10 @@ public class ConstraintOptimizer {
 
 		private void setMinBound(int minBound) {
 			this.minBound = minBound;
+		}
+
+		private int getTolerance() {
+			return tolerance;
 		}
 
 		private CountDownLatch getLatch() {
@@ -227,19 +234,19 @@ public class ConstraintOptimizer {
 						group.setMinBound(nextBound);
 						System.out.println("\nnew minimum score found: " + nextBound);
 					}
-					else if (nextBound <= group.getMinBound() + 1) {
+					else if (nextBound <= group.getMinBound() + group.getTolerance()) {
 						group.getOutput().push(nextEntry);
 						int size = group.getOutput().size();
 						if (size % Math.pow(10, Math.floor(Math.log10(size))) == 0)
 							System.out.println(group.getOutput().size() + " rosters with score " + group.getMinBound());
 					}
 				}
-				else if (nextEntry.getBound() <= group.getMinBound() + 1) {
+				else if (nextEntry.getBound() <= group.getMinBound() + group.getTolerance()) {
 					ArrayList<BranchAndBound> branches = nextRoster.branch();
 					for (BranchAndBound nextNextRoster : branches) {
 						int bound = nextNextRoster.lowerBound();
 
-						if (bound <= group.getMinBound() + 1) {
+						if (bound <= group.getMinBound() + group.getTolerance()) {
 							group.getQueue().push(new Entry(nextNextRoster, bound));
 						}
 					}
@@ -309,6 +316,32 @@ public class ConstraintOptimizer {
 		 * @return score
 		 */
 		public int score();
+
+	}
+
+	public static class OptimizerConfiguration {
+
+		private int threads;
+		private int tolerance1;
+		private int tolerance2;
+
+		public OptimizerConfiguration(int threads, int tolerance1, int tolerance2) {
+			this.threads = threads;
+			this.tolerance1 = tolerance1;
+			this.tolerance2 = tolerance2;
+		}
+
+		public int getThreads() {
+			return threads;
+		}
+
+		public int getTolerance1() {
+			return tolerance1;
+		}
+
+		public int getTolerance2() {
+			return tolerance2;
+		}
 
 	}
 

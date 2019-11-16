@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Scanner;
 
+import constraintOptimizer.ConstraintOptimizer.OptimizerConfiguration;
 import scioly.CompleteTeamRoster;
 import scioly.Team;
 import scioly.Team.TeamMember;
@@ -39,7 +40,7 @@ public class Main {
 
 		Scanner scanner = new Scanner(System.in);
 		String path = new File(Main.class.getProtectionDomain().getCodeSource().getLocation().toURI()).getParent();
-		TeamRosterConfiguration configuration = parseConfig(new FileInputStream(path + "/config.txt"));
+		Config configuration = parseConfig(new FileInputStream(path + "/config.txt"));
 
 		System.out.println("\noptimize? (Y/n)");
 		String s = scanner.nextLine();
@@ -47,7 +48,7 @@ public class Main {
 			System.exit(0);
 
 		System.out.println("optimizing...");
-		HashSet<CompleteTeamRoster> rosters = new ConstraintOptimizer(configuration).optimize();
+		HashSet<CompleteTeamRoster> rosters = new ConstraintOptimizer(configuration.getOptimizerConfiguration(), configuration.getTeamRosterConfiguration()).optimize();
 
 		System.out.println("\noutput file? (default 'rosters.csv')");
 		s = scanner.nextLine();
@@ -65,7 +66,7 @@ public class Main {
 		System.out.println("done!");
 	}
 
-	public static TeamRosterConfiguration parseConfig(InputStream is) throws IOException {
+	public static Config parseConfig(InputStream is) throws IOException {
 		Team team = new Team();
 		int[] targets = null;
 		ArrayList<Integer> timeslots = new ArrayList<Integer>();
@@ -73,6 +74,10 @@ public class Main {
 		ArrayList<TournamentEvent> building = new ArrayList<TournamentEvent>();
 		ArrayList<TeamMember[]> stacks = new ArrayList<TeamMember[]>();
 		ArrayList<TeamMember[]> unstacks = new ArrayList<TeamMember[]>();
+
+		int threads = 4;
+		int tolerance1 = 0;
+		int tolerance2 = 0;
 
 		ArrayList<String> stages = new ArrayList<String>(Arrays.asList(new String[] {
 				"config",
@@ -119,6 +124,28 @@ public class Main {
 							System.err.println("'" + ss[i] + "' is not a number (line " + lineNum + ")");
 							System.exit(1);
 						}
+					}
+				}
+				else if (line.split(" : ")[0].equals("threads")) {
+					try {
+						threads = Integer.parseInt(line.split(" : ")[1]);
+					} catch (NumberFormatException e) {
+						System.err.println("'" + line.split(" : ")[1] + "' is not a number (line " + lineNum + ")");
+						System.exit(1);
+					}
+				}
+				else if (line.split(" : ")[0].equals("tolerances")) {
+					String s = line.split(" : ")[1];
+					if (s.split(", ").length != 2) {
+						System.err.println("Expected 2 numbers separated by ', ' on line " + lineNum);
+						System.exit(1);
+					}
+					try {
+						tolerance1 = Integer.parseInt(s.split(", ")[0]);
+						tolerance2 = Integer.parseInt(s.split(", ")[1]);
+					} catch (NumberFormatException e) {
+						System.err.println("'" + s + "' is not a number (line " + lineNum + ")");
+						System.exit(1);
 					}
 				}
 			}
@@ -232,23 +259,46 @@ public class Main {
 			System.exit(1);
 		}
 
-		TeamRosterConfiguration configuration = new TeamRosterConfiguration(team, tournament, targets);
+		TeamRosterConfiguration teamConfig = new TeamRosterConfiguration(team, tournament, targets);
 		for (TeamMember[] members : stacks)
-			configuration.addStack(members[0], members[1]);
+			teamConfig.addStack(members[0], members[1]);
 		for (TeamMember[] members : unstacks)
-			configuration.addUnstack(members[0], members[1]);
+			teamConfig.addUnstack(members[0], members[1]);
+
+		OptimizerConfiguration optConfig = new OptimizerConfiguration(threads, tolerance1, tolerance2);
 
 		System.out.println(String.format("parsed config file: \n\t%d blocks\n\t%d events (%d building)\n\t%d team members\n\t%d stacking rules\n\t%d unstacking rules",
 				timeslots.size(),
-				configuration.getTournament().getEvents().size(), building.size(),
-				configuration.getTeam().getTeamMembers().size(),
+				teamConfig.getTournament().getEvents().size(), building.size(),
+				teamConfig.getTeam().getTeamMembers().size(),
 				stacks.size(), unstacks.size()));
 		System.out.print("target teams: ");
 		for (int i : targets)
 			System.out.print(i + " ");
 		System.out.println();
+		System.out.println(String.format("using %d threads, tolerances %d, %d", threads, tolerance1, tolerance2));
 
-		return configuration;
+		return new Config(optConfig, teamConfig);
+	}
+
+	private static class Config {
+
+		private OptimizerConfiguration opt;
+		private TeamRosterConfiguration team;
+
+		private Config(OptimizerConfiguration opt, TeamRosterConfiguration team) {
+			this.opt = opt;
+			this.team = team;
+		}
+
+		private OptimizerConfiguration getOptimizerConfiguration() {
+			return opt;
+		}
+
+		private TeamRosterConfiguration getTeamRosterConfiguration() {
+			return team;
+		}
+
 	}
 
 }

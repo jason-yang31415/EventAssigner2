@@ -8,7 +8,15 @@
 # parameter : value(s)
 # note that the spaces around the colon are required
 config
+
+# teams specifies target team sizes, comma-separated
 teams : 2, 2
+# threads specifies number of cpu threads to use for optimization
+threads : 4
+# tolerances specifies tolerance score on each round of optimization, i.e. on each round, rosters will have scores s in [minBound, minBound + tolerance]
+# increasing round 1 tolerance may increase the number of final rosters, but will likely not affect the optimal score
+# increasing round 2 tolerance is not advised, as this would return many suboptimal results
+tolerances : 0, 0
 END SECTION
 
 # TIMESLOTS
