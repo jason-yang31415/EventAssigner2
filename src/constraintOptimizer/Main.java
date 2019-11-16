@@ -80,8 +80,7 @@ public class Main {
 				"team",
 				"building",
 				"schedule",
-				"stack",
-				"lottery"
+				"stack"
 		}));
 		BufferedReader br = new BufferedReader(new InputStreamReader(is));
 		String line;

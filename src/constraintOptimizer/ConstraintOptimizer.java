@@ -36,28 +36,30 @@ public class ConstraintOptimizer {
 
 	public HashSet<CompleteTeamRoster> optimize() {
 		OptimizerGroup group1 = round1();
+		ArrayList<BranchAndBound> output1 = group1.getOptimal();
 
-		System.out.println("\n========\n\nround 1 complete producing " + group1.getOutput().size() + " rosters with score " + group1.getMinBound()
+		System.out.println("\n========\n\nround 1 complete producing " + output1.size() + " rosters with score " + group1.getMinBound()
 		+ "\n\n========\n");
 
 		ConcurrentLinkedDeque<Entry> queue = new ConcurrentLinkedDeque<Entry>();
-		for (Entry e : group1.getOutput()) {
-			FullTeamRoster ros = FullTeamRoster.initFullTeamRoster(configuration, (TeamRoster) e.getRoster());
+		for (BranchAndBound e : output1) {
+			FullTeamRoster ros = FullTeamRoster.initFullTeamRoster(configuration, (TeamRoster) e);
 			queue.push(new Entry(ros, ros.lowerBound()));
 		}
 		OptimizerGroup group2 = round2(queue);
+		ArrayList<BranchAndBound> output2 = group2.getOptimal();
 
 		HashSet<CompleteTeamRoster> rosters = new HashSet<CompleteTeamRoster>();
-		for (Entry e : group2.getOutput()) {
-			rosters.add(CompleteTeamRoster.reconstruct(configuration, (FullTeamRoster) e.getRoster()));
+		for (BranchAndBound e : output2) {
+			rosters.add(CompleteTeamRoster.reconstruct(configuration, (FullTeamRoster) e));
 		}
 
 		System.out.println("\n========\n\nround 2 complete producing " + rosters.size() + " rosters with score " + group2.getMinBound()
 		+ "\n\n========\n");
-		Entry entryB = group2.getOutput().getFirst();
-		CompleteTeamRoster.reconstruct(configuration, (FullTeamRoster) entryB.getRoster()).print();
-		System.out.println("lower bound: " + ((FullTeamRoster) entryB.getRoster()).lowerBound());
-		System.out.println("actual score: " + ((FullTeamRoster) entryB.getRoster()).score());
+		FullTeamRoster first = (FullTeamRoster) output2.get(0);
+		CompleteTeamRoster.reconstruct(configuration, first).print();
+		System.out.println("lower bound: " + first.lowerBound());
+		System.out.println("actual score: " + first.score());
 
 		System.out.println();
 		System.out.println(" + " + (rosters.size() - 1) + " more rosters...");
@@ -149,6 +151,15 @@ public class ConstraintOptimizer {
 
 		public LinkedBlockingDeque<Entry> getOutput(){
 			return output;
+		}
+
+		public ArrayList<BranchAndBound> getOptimal(){
+			ArrayList<BranchAndBound> optimal = new ArrayList<BranchAndBound>();
+			for (Entry e : getOutput()) {
+				if (e.getBound() == getMinBound())
+					optimal.add(e.getRoster());
+			}
+			return optimal;
 		}
 
 		private synchronized boolean done() {
