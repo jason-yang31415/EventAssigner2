@@ -221,7 +221,7 @@ public class TeamRoster implements BranchAndBound {
 		}
 
 		if (numSkipsLeft > 0 && valid) {
-			System.out.println(person);
+			// System.out.println(person);
 			TeamRoster tr = this.copy(this);
 			tr.assignMember(-1, person);
 			branches.add(tr);
